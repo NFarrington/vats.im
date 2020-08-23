@@ -6,9 +6,7 @@ use App\Events\EmailChangedEvent;
 use App\Events\EmailVerifiedEvent;
 use App\Events\PrefixApplicationCreatedEvent;
 use App\Events\ShortUrlVisited;
-use App\Events\UrlRetrieved;
 use App\Events\UrlSaved;
-use App\Listeners\CacheShortUrl;
 use App\Listeners\CacheShortUrlFromQueue;
 use App\Listeners\DeleteEmailVerificationListener;
 use App\Listeners\LogShortUrlVisit;
@@ -50,10 +48,6 @@ class EventServiceProvider extends ServiceProvider
 
         ShortUrlVisited::class => [
             LogShortUrlVisit::class,
-        ],
-
-        UrlRetrieved::class => [
-            CacheShortUrl::class,
         ],
 
         UrlSaved::class => [
