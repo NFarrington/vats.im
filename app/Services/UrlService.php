@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Entities\Url;
 use App\Exceptions\CacheFallbackException;
 use App\Repositories\UrlRepository;
+use Aws\DynamoDb\DynamoDbClient;
 use Doctrine\DBAL\DBALException;
 use Doctrine\ORM\EntityManagerInterface;
 use Illuminate\Support\Facades\Cache;
@@ -15,9 +16,13 @@ class UrlService
 {
     protected EntityManagerInterface $em;
     protected ?UrlRepository $urlRepository;
+    protected DynamoDbClient $dynamo;
 
-    public function __construct(EntityManagerInterface $em, ?UrlRepository $urlRepository)
+    const dynamoTableName = "VatsimUrlShortenerUrls";
+
+    public function __construct(DynamoDbClient $dynamo, EntityManagerInterface $em, ?UrlRepository $urlRepository)
     {
+        $this->dynamo = $dynamo;
         $this->em = $em;
         $this->urlRepository = $urlRepository;
     }
@@ -89,15 +94,26 @@ class UrlService
 
     public function addUrlToCache(Url $url): void
     {
-        Cache::set(
-            sprintf(
-                Url::URL_CACHE_KEY,
-                $url->getDomain()->getUrl(),
-                $url->isPrefixed() ? $url->getOrganization()->getPrefix() : null,
-                $url->getUrl()
-            ),
-            $url
+        $key = sprintf(
+            Url::URL_CACHE_KEY,
+            $url->getDomain()->getUrl(),
+            $url->isPrefixed() ? $url->getOrganization()->getPrefix() : null,
+            $url->getUrl()
         );
+
+        Cache::set($key, $url);
+
+        $this->dynamo->putItem([
+            'TableName' => self::dynamoTableName,
+            'Item' => [
+                'key' => [
+                    'S' => $url->getFullUrl(),
+                ],
+                'value' => [
+                    'S' => $url->getRedirectUrl(),
+                ],
+            ],
+        ]);
     }
 
     public function removeUrlFromCache(Url $url)
@@ -110,5 +126,14 @@ class UrlService
                 $url->getUrl()
             )
         );
+
+        $this->dynamo->deleteItem([
+            'TableName' => self::dynamoTableName,
+            'Key' => [
+                'key' => [
+                    'S' => $url->getFullUrl(),
+                ],
+            ],
+        ]);
     }
 }
