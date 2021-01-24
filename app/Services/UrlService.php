@@ -8,6 +8,7 @@ use App\Repositories\UrlRepository;
 use Aws\DynamoDb\DynamoDbClient;
 use Doctrine\DBAL\DBALException;
 use Doctrine\ORM\EntityManagerInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -18,7 +19,7 @@ class UrlService
     protected ?UrlRepository $urlRepository;
     protected DynamoDbClient $dynamo;
 
-    const dynamoTableName = "VatsimUrlShortenerUrls";
+    const dynamoTableName = 'VatsimUrlShortenerUrls';
 
     public function __construct(DynamoDbClient $dynamo, EntityManagerInterface $em, ?UrlRepository $urlRepository)
     {
@@ -111,6 +112,9 @@ class UrlService
                 ],
                 'value' => [
                     'S' => $url->getRedirectUrl(),
+                ],
+                'updated_at' => [
+                    'N' => (string) Carbon::now()->getTimestamp(),
                 ],
             ],
         ]);
